@@ -1,9 +1,9 @@
-import EchoScribe from '../components/PodcastTranscription';
+import EchoScribe from '../components/EchoScribe';
 
 export default function Home() {
   return (
     <div className='container mx-auto p-4'>
-      <PodcastTranscription />
+      <EchoScribe />
     </div>
   );
 }
