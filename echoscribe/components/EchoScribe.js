@@ -153,4 +153,4 @@ const EchoScribe = () => {
   );
 };
 
-export default PodcastTranscription;
+export default EchoScribe;
