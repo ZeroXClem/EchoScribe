@@ -98,6 +98,47 @@ const EchoScribe = ({ initialLanguage, initialTranscription, initialError, initi
     { value: 'es', label: 'Spanish' },
     { value: 'fr', label: 'French' },
   ], []);
+  const downloadTranscription = useCallback((format) => {
+    if (!transcription) {
+      setError('No transcription available to download.');
+      return;
+    }
+
+    let content = '';
+    let filename = '';
+    let mimeType = '';
+
+    switch (format) {
+      case 'markdown':
+        content = `# Transcription\n\n${transcription}`;
+        filename = 'transcription.md';
+        mimeType = 'text/markdown';
+        break;
+      case 'text':
+        content = transcription;
+        filename = 'transcription.txt';
+        mimeType = 'text/plain';
+        break;
+      case 'csv':
+        content = `"Transcription"\n"${transcription.replace(/"/g, '""')}"`;
+        filename = 'transcription.csv';
+        mimeType = 'text/csv';
+        break;
+      default:
+        setError('Invalid format selected.');
+        return;
+    }
+
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [transcription]);
 
   return (
     <div className="max-w-md mx-auto">
@@ -149,15 +190,26 @@ const EchoScribe = ({ initialLanguage, initialTranscription, initialError, initi
       )}
 
       {transcription && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Transcription</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>{transcription}</p>
-          </CardContent>
-        </Card>
-      )}
+    <Card>
+      <CardHeader>
+        <CardTitle>Transcription</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p>{transcription}</p>
+        <div className="mt-4 flex space-x-2">
+          <Button onClick={() => downloadTranscription('markdown')} size="sm">
+            Download as Markdown
+          </Button>
+          <Button onClick={() => downloadTranscription('text')} size="sm">
+            Download as Text
+          </Button>
+          <Button onClick={() => downloadTranscription('csv')} size="sm">
+            Download as CSV
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )}
 
       <h3 className="text-2xl font-semibold mt-8 mb-4">Download Podcast</h3>
 
