@@ -1,32 +1,39 @@
-import React, { useState } from 'react';
-import { Globe, Lock, FileAudio, Download } from 'lucide-react';
+import React, { useCallback, useMemo } from 'react';
+import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const EchoScribe = () => {
-  const [language, setLanguage] = useState('');
-  const [file, setFile] = useState(null);
-  const [podcastUrl, setPodcastUrl] = useState('');
-  const [transcription, setTranscription] = useState('');
-  const [error, setError] = useState('');
-  const [downloadError, setDownloadError] = useState('');
+const Globe = dynamic(() => import('lucide-react').then((mod) => mod.Globe));
+const Lock = dynamic(() => import('lucide-react').then((mod) => mod.Lock));
+const FileAudio = dynamic(() => import('lucide-react').then((mod) => mod.FileAudio));
+const Download = dynamic(() => import('lucide-react').then((mod) => mod.Download));
 
-  const handleLanguageChange = (value) => {
+const EchoScribe = ({ initialLanguage, initialTranscription, initialError, initialDownloadError }) => {
+  const [language, setLanguage] = React.useState(initialLanguage);
+  const [file, setFile] = React.useState(null);
+  const [podcastUrl, setPodcastUrl] = React.useState('');
+  const [transcription, setTranscription] = React.useState(initialTranscription);
+  const [error, setError] = React.useState(initialError);
+  const [downloadError, setDownloadError] = React.useState(initialDownloadError);
+  const [downloadStatus, setDownloadStatus] = React.useState('');
+
+  const handleLanguageChange = useCallback((value) => {
     setLanguage(value);
-  };
+  }, []);
 
-  const handleFileChange = (event) => {
+  const handleFileChange = useCallback((event) => {
     const selectedFile = event.target.files[0];
     setFile(selectedFile);
-  };
+  }, []);
 
-  const handlePodcastUrlChange = (event) => {
+  const handlePodcastUrlChange = useCallback((event) => {
     setPodcastUrl(event.target.value);
-  };
+  }, []);
 
-  const handleTranscribe = async () => {
+  const handleTranscribe = useCallback(async () => {
     if (!file) {
       setError('Please select an audio file.');
       return;
@@ -61,13 +68,16 @@ const EchoScribe = () => {
       setError('An error occurred during transcription. Please try again.');
       setTranscription('');
     }
-  };
+  }, [file, language]);
 
-  const handleDownload = async () => {
+  const handleDownload = useCallback(async () => {
     if (!podcastUrl) {
       setDownloadError('Please enter a Podcast URL.');
       return;
     }
+
+    setDownloadStatus('Downloading...');
+    setDownloadError('');
 
     try {
       const response = await fetch(`/api/download?url=${encodeURIComponent(podcastUrl)}`);
@@ -75,20 +85,19 @@ const EchoScribe = () => {
         throw new Error('Download failed');
       }
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = 'podcast.mp3';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      setDownloadError('');
+      const data = await response.json();
+      setDownloadStatus(`Successfully downloaded ${data.downloadedCount} episode(s)`);
     } catch (error) {
       setDownloadError('An error occurred during download. Please try again.');
+      setDownloadStatus('');
     }
-  };
+  }, [podcastUrl]);
+
+  const languageOptions = useMemo(() => [
+    { value: 'en', label: 'English' },
+    { value: 'es', label: 'Spanish' },
+    { value: 'fr', label: 'French' },
+  ], []);
 
   return (
     <div className="max-w-md mx-auto">
@@ -101,15 +110,14 @@ const EchoScribe = () => {
           <CardTitle className="text-xl">Select your language</CardTitle>
         </CardHeader>
         <CardContent>
-          <Select onValueChange={handleLanguageChange}>
+          <Select onValueChange={handleLanguageChange} value={language}>
             <SelectTrigger>
               <SelectValue placeholder="Select Language" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="en">English</SelectItem>
-              <SelectItem value="es">Spanish</SelectItem>
-              <SelectItem value="fr">French</SelectItem>
-              {/* Add more language options as needed */}
+              {languageOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </CardContent>
@@ -172,6 +180,12 @@ const EchoScribe = () => {
         <Download className="w-4 h-4 mr-2" /> Download
       </Button>
 
+      {downloadStatus && (
+        <Alert className="mb-4">
+          <AlertDescription>{downloadStatus}</AlertDescription>
+        </Alert>
+      )}
+
       {downloadError && (
         <Alert variant="destructive" className="mb-4">
           <AlertTitle>Error</AlertTitle>
@@ -213,5 +227,17 @@ const EchoScribe = () => {
     </div>
   );
 };
+
+export async function getServerSideProps() {
+  // You can fetch initial data here if needed
+  return {
+    props: {
+      initialLanguage: '',
+      initialTranscription: '',
+      initialError: '',
+      initialDownloadError: '',
+    },
+  };
+}
 
 export default EchoScribe;
